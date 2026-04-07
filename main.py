@@ -6,7 +6,12 @@ FastAPI application exposing the environment API.
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent
+if str(BASE_DIR) not in sys.path:
+    sys.path.append(str(BASE_DIR))
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -26,7 +31,6 @@ from models import (
     StepResponse,
     TasksResponse,
 )
-
 # ---------------------------------------------------------------------------
 # App setup
 # ---------------------------------------------------------------------------
