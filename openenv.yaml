@@ -1,0 +1,204 @@
+name: it-helpdesk-incident-triage
+version: "1.0.0"
+description: >
+  An OpenEnv-style environment where an AI agent acts as an IT Helpdesk /
+  DevOps Incident Triage assistant. The agent must diagnose and resolve
+  realistic employee or system incidents by interpreting logs, support tickets,
+  system facts, and acting within policy constraints.
+
+environment:
+  type: stateful-sequential
+  deterministic: true
+  reproducible: true
+  max_steps_per_task:
+    easy: 10
+    medium: 15
+    hard: 20
+
+endpoints:
+  base_url: "http://localhost:7860"
+  reset:
+    method: POST
+    path: /reset
+    description: Start a new task episode
+    request_schema: ResetRequest
+    response_schema: ResetResponse
+  step:
+    method: POST
+    path: /step
+    description: Execute one action in the environment
+    request_schema: StepRequest
+    response_schema: StepResponse
+  state:
+    method: GET
+    path: /state
+    description: Retrieve full current environment state
+    response_schema: StateResponse
+  grade:
+    method: GET
+    path: /grade
+    description: Score the current episode (callable at any time)
+    response_schema: GraderResult
+  tasks:
+    method: GET
+    path: /tasks
+    description: List all available tasks
+    response_schema: TasksResponse
+  ui:
+    method: GET
+    path: /ui
+    description: Interactive demo UI (HTML)
+
+action_space:
+  type: discrete-string
+  description: >
+    Each action is a string identifier representing a diagnostic or remediation
+    step. Actions are validated against the current task's action set.
+  examples:
+    - check_logs
+    - inspect_account
+    - inspect_disk_usage
+    - inspect_ssl_certificate
+    - unlock_account
+    - clear_temp_files
+    - renew_ssl_certificate
+    - restart_portal_service
+    - restart_gateway
+    - resolve_ticket
+
+observation_space:
+  type: structured-text
+  fields:
+    - ticket: "Support ticket with id, priority, user, subject, body, timestamp"
+    - logs: "Array of timestamped system log strings"
+    - system_facts: "Key-value map of observable system state (redacted hidden root cause)"
+    - available_actions: "List of valid and invalid action strings the agent may choose from"
+    - observation: "Natural language result of the last executed action"
+    - action_history: "Ordered list of (step, action, reward, observation_preview)"
+    - cumulative_reward: "Running total reward accumulated in the episode"
+    - steps: "Number of steps taken"
+    - done: "Boolean — episode complete"
+    - success: "Boolean — task resolved correctly"
+
+reward_function:
+  type: shaped-additive
+  range: [-inf, 1.0]
+  components:
+    - name: diagnostic_action
+      description: Small positive reward for useful diagnostic steps
+      value_range: [0.06, 0.15]
+    - name: correct_subsystem_identified
+      description: Reward for identifying the correct root cause subsystem
+      value_range: [0.10, 0.15]
+    - name: correct_remediation
+      description: Larger reward for the primary fix action
+      value_range: [0.20, 0.35]
+    - name: verification
+      description: Reward for confirming the fix worked
+      value_range: [0.04, 0.10]
+    - name: ticket_resolution
+      description: Reward for formally resolving the ticket
+      value_range: [0.04, 0.15]
+    - name: completion_bonus
+      description: Flat bonus awarded on successful episode completion
+      value: 0.10
+    - name: irrelevant_action_penalty
+      description: Penalty for actions unrelated to the root cause
+      value_range: [-0.10, -0.15]
+    - name: destructive_action_penalty
+      description: Larger penalty for unsafe or disruptive actions
+      value_range: [-0.20, -0.25]
+    - name: repeated_action_decay
+      description: Repeat of a positive action yields 10% of original reward
+      note: Prevents reward hacking via action repetition
+
+tasks:
+  - task_id: easy_vpn_lock
+    difficulty: easy
+    title: Locked VPN Account
+    description: >
+      A user cannot connect to the corporate VPN. Root cause is an ActiveDirectory
+      account lockout after repeated failed authentication attempts. Agent must inspect
+      the account, identify the lockout, unlock the account, and resolve the ticket.
+    max_steps: 10
+    passing_score: 0.70
+    required_actions:
+      - inspect_account
+      - unlock_account
+      - resolve_ticket
+
+  - task_id: medium_disk_full
+    difficulty: medium
+    title: Disk Full Service Outage
+    description: >
+      An internal portal returns HTTP 503. Root cause is a disk at 98% capacity
+      (42GB of temp files) causing the portal service to crash with ENOSPC. Agent must
+      diagnose the disk usage, clear temp files, restart the service, and resolve.
+    max_steps: 15
+    passing_score: 0.70
+    required_actions:
+      - inspect_disk_usage
+      - clear_temp_files
+      - restart_portal_service
+      - resolve_ticket
+
+  - task_id: hard_ssl_expiry
+    difficulty: hard
+    title: Expired SSL Certificate on Billing Service
+    description: >
+      A business-critical billing service is inaccessible. Root cause is an expired
+      Let's Encrypt SSL certificate (auto-renewal was disabled) causing the Kong API
+      gateway to enter an unhealthy state and drop all HTTPS connections. Agent must
+      diagnose the cascade, renew the certificate, redeploy it, restart the gateway,
+      verify access, and deliver an RCA.
+    max_steps: 20
+    passing_score: 0.75
+    required_actions:
+      - inspect_ssl_certificate
+      - renew_ssl_certificate
+      - restart_gateway
+      - verify_billing_access
+      - resolve_ticket
+
+graders:
+  description: >
+    Each task has a dedicated grader function. Scores are deterministic and
+    computed from four weighted components.
+  components:
+    coverage_score:
+      weight: 0.50
+      description: Proportion of required actions completed
+    reward_score:
+      weight: 0.30
+      description: Normalized cumulative reward vs theoretical maximum
+    efficiency_score:
+      weight: 0.10
+      description: Bonus for completing with fewer steps (only on success)
+    completion_bonus:
+      weight: 0.10
+      description: Flat bonus for successfully resolving the ticket
+
+inference:
+  script: inference.py
+  env_vars:
+    API_BASE_URL: "URL of running environment server (default: http://localhost:7860)"
+    MODEL_NAME: "OpenAI-compatible model name for LLM agent"
+    HF_TOKEN: "Hugging Face API token (used as OpenAI API key)"
+  fallback: >
+    If LLM is unavailable or returns invalid actions, a deterministic
+    heuristic sequence is used. This ensures reproducible scores.
+  log_format:
+    - "[START] — episode/inference start marker"
+    - "[STEP]  — per-step action/reward log"
+    - "[END]   — episode complete with score"
+
+deployment:
+  docker:
+    base_image: python:3.11-slim
+    exposed_port: 7860
+    build: "docker build -t it-helpdesk-openenv ."
+    run: "docker run -p 7860:7860 it-helpdesk-openenv"
+  huggingface_spaces:
+    sdk: docker
+    app_port: 7860
+    hardware: cpu-basic

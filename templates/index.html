@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>IT Helpdesk Incident Triage · OpenEnv</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="/static/style.css"/>
+</head>
+<body>
+
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-brand">
+    <div class="brand-icon">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18"/></svg>
+    </div>
+    <div>
+      <div class="brand-name">IncidentEnv</div>
+      <div class="brand-sub">OpenEnv · v1.0</div>
+    </div>
+  </div>
+
+  <div class="sidebar-section-label">NAVIGATE</div>
+  <nav class="sidebar-nav">
+    <button class="nav-item active" data-panel="dashboard" onclick="showPanel('dashboard',this)">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+      Dashboard
+    </button>
+    <button class="nav-item" data-panel="logs" onclick="showPanel('logs',this)">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      System Logs
+    </button>
+    <button class="nav-item" data-panel="facts" onclick="showPanel('facts',this)">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+      System Facts
+    </button>
+    <button class="nav-item" data-panel="history" onclick="showPanel('history',this)">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      Action History
+    </button>
+    <button class="nav-item" data-panel="grade" onclick="showPanel('grade',this)">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+      Grader
+    </button>
+  </nav>
+
+  <div class="sidebar-section-label" style="margin-top:16px">TASKS</div>
+  <div class="task-pills">
+    <button class="task-pill" id="pill-easy_vpn_lock" onclick="selectTask('easy_vpn_lock')">
+      <span class="dot easy"></span>
+      <div class="pill-text">
+        <div class="pill-title">Locked VPN Account</div>
+        <div class="pill-diff">Easy · 10 steps</div>
+      </div>
+    </button>
+    <button class="task-pill" id="pill-medium_disk_full" onclick="selectTask('medium_disk_full')">
+      <span class="dot medium"></span>
+      <div class="pill-text">
+        <div class="pill-title">Disk Full Outage</div>
+        <div class="pill-diff">Medium · 15 steps</div>
+      </div>
+    </button>
+    <button class="task-pill" id="pill-hard_ssl_expiry" onclick="selectTask('hard_ssl_expiry')">
+      <span class="dot hard"></span>
+      <div class="pill-text">
+        <div class="pill-title">SSL Cert Expired</div>
+        <div class="pill-diff">Hard · 20 steps</div>
+      </div>
+    </button>
+  </div>
+
+  <div class="sidebar-links">
+    <a href="/docs" target="_blank" class="slink">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+      API Docs
+    </a>
+    <a href="/tasks" target="_blank" class="slink">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+      Tasks JSON
+    </a>
+  </div>
+</aside>
+
+<div class="main-wrap">
+
+  <!-- TOPBAR -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <div class="topbar-title" id="topbarTitle">IT Helpdesk Incident Triage</div>
+      <div class="topbar-crumb" id="topbarCrumb">OpenEnv · Select a task to begin</div>
+    </div>
+    <div class="topbar-right">
+      <div class="stat-chips">
+        <div class="schip" id="schipSteps">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          <span id="scSteps">— / —</span>
+        </div>
+        <div class="schip" id="schipReward">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          <span id="scReward">+0.0000</span>
+        </div>
+        <div class="schip" id="schipProg">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          <span id="scProg">0%</span>
+        </div>
+      </div>
+      <div class="status-badge" id="statusBadge">IDLE</div>
+      <button class="btn-start" id="resetBtn" onclick="doReset()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.39"/></svg>
+        Start Task
+      </button>
+    </div>
+  </header>
+
+  <!-- ─── DASHBOARD ─── -->
+  <div class="panel active" id="panel-dashboard">
+    <!-- empty state -->
+    <div class="empty-state" id="emptyState">
+      <div class="es-icon">
+        <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.1"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      </div>
+      <h2 class="es-title">No Active Incident</h2>
+      <p class="es-sub">Choose a scenario below or from the sidebar, then click <em>Start Task</em></p>
+      <div class="es-cards">
+        <div class="es-card" onclick="selectTask('easy_vpn_lock');doReset()">
+          <div class="es-card-top">
+            <span class="dot easy"></span>
+            <span class="es-diff easy-text">EASY</span>
+          </div>
+          <div class="es-card-title">Locked VPN Account</div>
+          <div class="es-card-desc">User locked out after failed auth attempts. Identify & unlock account.</div>
+          <div class="es-card-meta">10 steps · Score ≥ 0.70</div>
+        </div>
+        <div class="es-card" onclick="selectTask('medium_disk_full');doReset()">
+          <div class="es-card-top">
+            <span class="dot medium"></span>
+            <span class="es-diff medium-text">MEDIUM</span>
+          </div>
+          <div class="es-card-title">Disk Full Service Outage</div>
+          <div class="es-card-desc">Internal portal returning 503. Disk at 98%. Clear space & restore service.</div>
+          <div class="es-card-meta">15 steps · Score ≥ 0.70</div>
+        </div>
+        <div class="es-card" onclick="selectTask('hard_ssl_expiry');doReset()">
+          <div class="es-card-top">
+            <span class="dot hard"></span>
+            <span class="es-diff hard-text">HARD</span>
+          </div>
+          <div class="es-card-title">Expired SSL Certificate</div>
+          <div class="es-card-desc">Billing service down. Expired cert caused gateway cascade failure. Full RCA required.</div>
+          <div class="es-card-meta">20 steps · Score ≥ 0.75</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- active layout -->
+    <div class="dash-layout" id="activeLayout" style="display:none">
+      <div class="dash-col-left">
+
+        <!-- Ticket -->
+        <div class="scard ticket-scard" id="ticketCard">
+          <div class="scard-header">
+            <div class="scard-label">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 12V22H4V12"/><path d="M22 7H2v5h20V7z"/><path d="M12 22V7"/></svg>
+              Incident Ticket
+            </div>
+            <div class="ticket-meta-badges">
+              <span class="tid-badge" id="tidBadge">—</span>
+              <span class="pri-badge" id="priBadge">—</span>
+            </div>
+          </div>
+          <div class="ticket-subject" id="tSubject">—</div>
+          <div class="ticket-from" id="tFrom">—</div>
+          <div class="ticket-body" id="tBody">—</div>
+        </div>
+
+        <!-- Terminal observation -->
+        <div class="scard terminal-scard">
+          <div class="scard-header">
+            <div class="scard-label">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+              System Response
+            </div>
+            <div class="term-dots">
+              <span class="tdot r"></span><span class="tdot y"></span><span class="tdot g"></span>
+            </div>
+          </div>
+          <div class="term-prompt">root@incident-env:~# <span class="term-cursor">▋</span></div>
+          <pre class="term-output" id="termOutput">Waiting for action...</pre>
+          <div class="reward-strip" id="rewardStrip">
+            <div class="rs-left">
+              <span class="rs-label">LAST REWARD</span>
+              <span class="rs-value" id="rsValue">+0.0000</span>
+            </div>
+            <div class="rs-bar-wrap">
+              <div class="rs-bar-track">
+                <div class="rs-bar-fill" id="rsBarFill" style="width:50%;background:var(--accent-blue)"></div>
+              </div>
+            </div>
+            <div class="rs-right">
+              <span class="rs-label">CUMULATIVE</span>
+              <span class="rs-value" id="rsCumul">0.0000</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="dash-col-right">
+
+        <!-- Progress -->
+        <div class="scard progress-scard">
+          <div class="scard-header">
+            <div class="scard-label">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              Episode Progress
+            </div>
+            <div class="ep-status" id="epStatus">ACTIVE</div>
+          </div>
+          <div class="prog-body">
+            <div class="prog-ring-wrap">
+              <svg viewBox="0 0 80 80" class="prog-ring-svg">
+                <circle class="pr-bg" cx="40" cy="40" r="30"/>
+                <circle class="pr-fg" id="prFg" cx="40" cy="40" r="30" stroke-dasharray="188.5 188.5" stroke-dashoffset="188.5"/>
+              </svg>
+              <div class="pr-center">
+                <span class="pr-pct" id="prPct">0%</span>
+                <span class="pr-label">done</span>
+              </div>
+            </div>
+            <div class="prog-stats">
+              <div class="ps"><div class="ps-val" id="psSteps">0/—</div><div class="ps-label">Steps</div></div>
+              <div class="ps"><div class="ps-val" id="psReq">0/—</div><div class="ps-label">Required</div></div>
+              <div class="ps"><div class="ps-val" id="psRew">0.00</div><div class="ps-label">Reward</div></div>
+              <div class="ps"><div class="ps-val" id="psDiff">—</div><div class="ps-label">Difficulty</div></div>
+            </div>
+          </div>
+          <div class="step-bar-row">
+            <div class="step-bar-track"><div class="step-bar-fill" id="stepBarFill" style="width:0%"></div></div>
+            <span class="step-bar-label" id="stepBarLabel">0 / 0 steps</span>
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="scard actions-scard">
+          <div class="scard-header">
+            <div class="scard-label">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
+              Available Actions
+            </div>
+            <div class="legend-row">
+              <span class="lgnd"><span class="ldot safe"></span>Helpful</span>
+              <span class="lgnd"><span class="ldot risky"></span>Risky</span>
+              <span class="lgnd"><span class="ldot done-dot"></span>Used</span>
+            </div>
+          </div>
+          <div class="action-grid" id="actionGrid">
+            <div class="actions-empty">Start a task to see actions.</div>
+          </div>
+        </div>
+
+        <!-- Mini history -->
+        <div class="scard minihistory-scard">
+          <div class="scard-header">
+            <div class="scard-label">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><polyline points="3 3 3 8 8 8"/><polyline points="12 7 12 12 15 15"/></svg>
+              Recent Steps
+            </div>
+            <button class="view-all" onclick="showPanel('history', document.querySelector('[data-panel=history]'))">all →</button>
+          </div>
+          <div class="mini-hist" id="miniHist">
+            <div class="mh-empty">No steps taken yet.</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── SYSTEM LOGS ─── -->
+  <div class="panel" id="panel-logs">
+    <div class="panel-inner">
+      <div class="panel-hd">
+        <div>
+          <h2 class="panel-h2">System Logs</h2>
+          <p class="panel-p">Raw timestamped log output from the affected system</p>
+        </div>
+        <span class="log-count-badge" id="logCountBadge">0 entries</span>
+      </div>
+      <div class="log-terminal" id="logTerminal">
+        <div class="log-ph">Start a task to see system logs.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── SYSTEM FACTS ─── -->
+  <div class="panel" id="panel-facts">
+    <div class="panel-inner">
+      <div class="panel-hd">
+        <div>
+          <h2 class="panel-h2">System Facts</h2>
+          <p class="panel-p">Observable key/value system state (hidden root cause is redacted from agent view)</p>
+        </div>
+        <span class="redact-note">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          Root cause redacted
+        </span>
+      </div>
+      <div class="facts-grid" id="factsGrid">
+        <div class="facts-ph">Start a task to see system facts.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── HISTORY ─── -->
+  <div class="panel" id="panel-history">
+    <div class="panel-inner">
+      <div class="panel-hd">
+        <div>
+          <h2 class="panel-h2">Action History</h2>
+          <p class="panel-p">Complete ordered record of all actions and their outcomes</p>
+        </div>
+        <span class="hist-count" id="histCountBadge">0 actions</span>
+      </div>
+      <div id="histTableWrap">
+        <div class="hist-ph">No actions taken yet. Start a task and execute actions.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── GRADER ─── -->
+  <div class="panel" id="panel-grade">
+    <div class="panel-inner">
+      <div class="panel-hd">
+        <div>
+          <h2 class="panel-h2">Episode Grader</h2>
+          <p class="panel-p">Real-time scoring — callable at any point during or after an episode</p>
+        </div>
+        <button class="btn-grade" id="gradeBtn" onclick="doGrade()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          Run Grader
+        </button>
+      </div>
+      <div class="grade-layout">
+        <div class="grade-score-col">
+          <div class="grade-score-card" id="gradeScoreCard">
+            <div class="grade-idle" id="gradeIdle">
+              <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              <p>Start a task, take actions, then click <strong>Run Grader</strong></p>
+            </div>
+            <div id="gradeResultInner" style="display:none">
+              <svg class="grade-ring-svg" viewBox="0 0 120 120">
+                <circle class="grr-bg" cx="60" cy="60" r="50"/>
+                <circle class="grr-fg" id="grrFg" cx="60" cy="60" r="50" stroke-dasharray="314 314" stroke-dashoffset="314"/>
+              </svg>
+              <div class="grade-score-text" id="gradeScoreText">0.00</div>
+              <div class="grade-pass-tag" id="gradePassTag">—</div>
+              <div class="grade-meta" id="gradeMeta"></div>
+            </div>
+          </div>
+          <div class="grade-components" id="gradeComponents" style="display:none">
+            <div class="scard-label" style="margin-bottom:12px">Score Components</div>
+            <div id="compList"></div>
+          </div>
+        </div>
+        <div class="grade-feedback-col">
+          <div class="scard" style="height:100%">
+            <div class="scard-header">
+              <div class="scard-label">Grader Feedback</div>
+            </div>
+            <pre class="grade-fb-pre" id="gradeFbPre">Run the grader to see detailed scoring breakdown...</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /main-wrap -->
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+<div class="loading-mask" id="loadingMask" style="display:none">
+  <div class="loading-box">
+    <div class="spinner"></div>
+    <div class="loading-msg" id="loadingMsg">Executing...</div>
+  </div>
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

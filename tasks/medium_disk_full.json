@@ -1,0 +1,93 @@
+{
+  "task_id": "medium_disk_full",
+  "difficulty": "medium",
+  "title": "Disk Full Service Outage",
+  "description": "The internal employee portal is returning 503 errors. Multiple users are reporting the service is down. Investigate and resolve.",
+  "ticket": {
+    "id": "TICKET-2047",
+    "priority": "high",
+    "user": "ops-alerts@company.com",
+    "subject": "[ALERT] Internal Portal returning HTTP 503 - Service Unavailable",
+    "body": "Automated monitoring alert: The internal portal at portal.company.com has been returning HTTP 503 for the past 22 minutes. 47 users have been affected. The service health check is failing. Immediate investigation required.",
+    "created_at": "2024-01-22T14:38:00Z"
+  },
+  "system_facts": {
+    "service": "internal-portal",
+    "host": "portal-prod-01",
+    "disk_usage_percent": 98,
+    "disk_total_gb": 200,
+    "disk_used_gb": 196,
+    "disk_free_gb": 4,
+    "temp_files_gb": 42,
+    "log_files_gb": 18,
+    "service_status": "crashed",
+    "last_restart": "2024-01-22T14:15:00Z",
+    "crash_reason": "ENOSPC - No space left on device",
+    "account_status": "normal",
+    "ssl_cert_expiry_days": 89
+  },
+  "logs": [
+    "[2024-01-22 14:14:52] PORTAL: Writing session data... ERROR: ENOSPC - No space left on device",
+    "[2024-01-22 14:14:53] PORTAL: FATAL: Cannot write to /var/lib/portal/sessions — disk full",
+    "[2024-01-22 14:14:53] PORTAL: Service shutting down unexpectedly",
+    "[2024-01-22 14:15:01] SYSTEMD: portal.service FAILED — exit code 1",
+    "[2024-01-22 14:15:30] NGINX: upstream portal:8080 unreachable — returning 503",
+    "[2024-01-22 14:16:00] MONITOR: Health check portal.company.com FAILED (HTTP 503)",
+    "[2024-01-22 14:38:00] MONITOR: Alert triggered — 22 minutes of downtime"
+  ],
+  "hidden_root_cause": "disk_full_caused_service_crash",
+  "valid_actions": [
+    "check_logs",
+    "check_service_status",
+    "inspect_disk_usage",
+    "identify_large_files",
+    "clear_temp_files",
+    "clear_old_logs",
+    "restart_portal_service",
+    "verify_service_health",
+    "resolve_ticket"
+  ],
+  "invalid_actions": [
+    "unlock_account",
+    "reboot_server",
+    "renew_ssl_cert",
+    "reset_password",
+    "restart_vpn_gateway"
+  ],
+  "reward_map": {
+    "check_logs": 0.1,
+    "check_service_status": 0.08,
+    "inspect_disk_usage": 0.12,
+    "identify_large_files": 0.1,
+    "clear_temp_files": 0.2,
+    "clear_old_logs": 0.1,
+    "restart_portal_service": 0.15,
+    "verify_service_health": 0.08,
+    "resolve_ticket": 0.07,
+    "unlock_account": -0.1,
+    "reboot_server": -0.25,
+    "renew_ssl_cert": -0.1,
+    "reset_password": -0.1,
+    "restart_vpn_gateway": -0.1,
+    "unknown_action": -0.05
+  },
+  "required_for_success": ["inspect_disk_usage", "clear_temp_files", "restart_portal_service", "resolve_ticket"],
+  "observations": {
+    "check_logs": "APPLICATION LOGS (/var/log/portal/app.log):\n[2024-01-22 14:14:52] PORTAL: Writing session data... ERROR: ENOSPC - No space left on device\n[2024-01-22 14:14:53] PORTAL: FATAL: Cannot write to /var/lib/portal/sessions — disk full\n[2024-01-22 14:14:53] PORTAL: Service shutting down unexpectedly\n[2024-01-22 14:15:01] SYSTEMD: portal.service FAILED — exit code 1\n[2024-01-22 14:15:30] NGINX: upstream portal:8080 unreachable — returning 503",
+    "check_service_status": "SERVICE STATUS CHECK:\n  Service: portal.service\n  Status: FAILED (inactive)\n  Exit code: 1\n  Last active: 2024-01-22 14:14:53 UTC\n  Restart attempts: 3 (all failed — disk still full)\n  NGINX upstream: UNREACHABLE\n  Health endpoint: HTTP 503",
+    "inspect_disk_usage": "DISK USAGE REPORT for portal-prod-01:\n  Filesystem    Size   Used   Avail  Use%  Mounted on\n  /dev/sda1     200G   196G   4G     98%   /\n\n  TOP DIRECTORIES:\n  42G   /tmp\n  18G   /var/log\n  61G   /var/lib/portal\n  35G   /usr\n  40G   (other)\n\n  WARNING: Disk usage at 98%. Service cannot write session data.",
+    "identify_large_files": "LARGE FILE SCAN:\n  /tmp/portal-upload-cache/    38.2G  (temp upload files, safe to delete)\n  /tmp/crash-dumps/            3.8G   (old crash dumps, safe to delete)\n  /var/log/portal/app.log.1    8.4G   (rotated log, safe to archive/delete)\n  /var/log/portal/access.log   6.1G   (access log, can be compressed)\n  /var/log/nginx/error.log.2   3.5G   (old nginx log)\n  Total recoverable: ~60G",
+    "clear_temp_files": "TEMP FILE CLEANUP:\n  Removed: /tmp/portal-upload-cache/    38.2G\n  Removed: /tmp/crash-dumps/            3.8G\n  Total freed: 42.0 GB\n\n  UPDATED DISK USAGE:\n  Filesystem    Size   Used   Avail  Use%  Mounted on\n  /dev/sda1     200G   154G   46G    77%   /\n\n  Disk space is now sufficient for service restart.",
+    "clear_old_logs": "LOG FILE CLEANUP:\n  Compressed: /var/log/portal/app.log.1  (38.2G → 1.1G)\n  Compressed: /var/log/portal/access.log (6.1G → 0.4G)\n  Removed: /var/log/nginx/error.log.2   3.5G\n  Total freed: 16.4 GB additional\n\n  UPDATED DISK USAGE:\n  Filesystem    Size   Used   Avail  Use%  Mounted on\n  /dev/sda1     200G   137G   63G    69%   /",
+    "restart_portal_service": "SERVICE RESTART:\n  Command: systemctl restart portal.service\n  Status: SUCCESS\n  portal.service is now ACTIVE (running)\n  PID: 14822\n  Startup time: 4.2s\n  Health check: HTTP 200 OK\n  NGINX upstream: REACHABLE",
+    "verify_service_health": "SERVICE HEALTH VERIFICATION:\n  portal.company.com: HTTP 200 OK\n  Response time: 142ms\n  Session write test: PASS\n  Active connections: 12 (users reconnecting)\n  Disk usage: 77% (safe operating range)",
+    "resolve_ticket": "TICKET-2047 RESOLVED:\n  Root Cause: Disk reached 98% capacity due to accumulated temp upload cache (42GB) causing the portal service to crash with ENOSPC error.\n  Actions Taken: Cleared temp files (42GB freed), restarted portal service.\n  Recommendation: Implement automated disk cleanup cron job and set alert at 80% disk usage.\n  Downtime: ~26 minutes\n  Status: Closed",
+    "unlock_account": "INFO: Account lookup performed — no account lock issue found. This is not an authentication problem. Check service logs instead.",
+    "reboot_server": "CRITICAL WARNING: Full server reboot initiated. This caused additional downtime and affected all services on the host. Root cause analysis shows this was unnecessary — disk cleanup and service restart were sufficient.",
+    "renew_ssl_cert": "INFO: SSL certificate check — cert is valid for 89 more days. No SSL issue present. This action did not address the service outage.",
+    "reset_password": "INFO: No authentication issue detected. Password reset was unnecessary. Focus on service and infrastructure investigation.",
+    "restart_vpn_gateway": "INFO: VPN gateway is unrelated to the internal portal outage. This action had no effect on the reported issue."
+  },
+  "max_steps": 15,
+  "passing_score": 0.7
+}

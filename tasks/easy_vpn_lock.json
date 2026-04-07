@@ -1,0 +1,81 @@
+{
+  "task_id": "easy_vpn_lock",
+  "difficulty": "easy",
+  "title": "Locked VPN Account",
+  "description": "A user reports they cannot connect to the corporate VPN. Diagnose and resolve the issue.",
+  "ticket": {
+    "id": "TICKET-1001",
+    "priority": "medium",
+    "user": "john.doe@company.com",
+    "subject": "Cannot connect to VPN",
+    "body": "Hi IT, I've been trying to connect to the VPN since this morning but keep getting 'Authentication failed'. I need access urgently to work remotely today. I haven't changed my password recently. Please help ASAP.",
+    "created_at": "2024-01-15T09:03:00Z"
+  },
+  "system_facts": {
+    "vpn_gateway": "vpn.company.com",
+    "auth_backend": "ActiveDirectory",
+    "user_account": "john.doe",
+    "account_status": "locked",
+    "failed_login_attempts": 5,
+    "lockout_threshold": 5,
+    "lockout_reason": "exceeded_failed_attempts",
+    "last_successful_login": "2024-01-14T17:45:00Z",
+    "disk_usage_percent": 34,
+    "ssl_cert_expiry_days": 210
+  },
+  "logs": [
+    "[2024-01-15 08:55:12] VPN-AUTH: User john.doe authentication attempt - FAILED (bad credentials)",
+    "[2024-01-15 08:56:03] VPN-AUTH: User john.doe authentication attempt - FAILED (bad credentials)",
+    "[2024-01-15 08:57:45] VPN-AUTH: User john.doe authentication attempt - FAILED (bad credentials)",
+    "[2024-01-15 08:58:22] VPN-AUTH: User john.doe authentication attempt - FAILED (bad credentials)",
+    "[2024-01-15 08:59:01] VPN-AUTH: User john.doe authentication attempt - FAILED (bad credentials)",
+    "[2024-01-15 08:59:01] AD-SECURITY: Account john.doe LOCKED OUT after 5 failed attempts",
+    "[2024-01-15 09:00:44] VPN-AUTH: User john.doe authentication attempt - FAILED (account locked)"
+  ],
+  "hidden_root_cause": "account_locked",
+  "valid_actions": [
+    "check_logs",
+    "inspect_account",
+    "identify_lock_reason",
+    "unlock_account",
+    "verify_vpn_access",
+    "resolve_ticket"
+  ],
+  "invalid_actions": [
+    "reset_password",
+    "reboot_server",
+    "restart_vpn_gateway",
+    "clear_disk_space",
+    "renew_ssl_cert"
+  ],
+  "reward_map": {
+    "check_logs": 0.1,
+    "inspect_account": 0.15,
+    "identify_lock_reason": 0.15,
+    "unlock_account": 0.35,
+    "verify_vpn_access": 0.1,
+    "resolve_ticket": 0.15,
+    "reset_password": -0.1,
+    "reboot_server": -0.2,
+    "restart_vpn_gateway": -0.15,
+    "clear_disk_space": -0.1,
+    "renew_ssl_cert": -0.1,
+    "unknown_action": -0.05
+  },
+  "required_for_success": ["inspect_account", "unlock_account", "resolve_ticket"],
+  "observations": {
+    "check_logs": "LOGS RETRIEVED:\n[2024-01-15 08:59:01] AD-SECURITY: Account john.doe LOCKED OUT after 5 failed attempts\n[2024-01-15 09:00:44] VPN-AUTH: User john.doe authentication attempt - FAILED (account locked)\nMultiple authentication failures detected in the last hour.",
+    "inspect_account": "ACCOUNT INSPECTION RESULT:\n  Username: john.doe\n  Full Name: John Doe\n  Email: john.doe@company.com\n  Status: LOCKED\n  Failed Attempts: 5\n  Lockout Time: 2024-01-15 08:59:01 UTC\n  Lockout Reason: Exceeded failed login threshold (5/5)\n  Last Successful Login: 2024-01-14 17:45:00 UTC",
+    "identify_lock_reason": "LOCK REASON IDENTIFIED:\n  Root Cause: Account locked due to 5 consecutive failed VPN authentication attempts.\n  Policy: AD lockout policy triggers at 5 failed attempts.\n  Likely cause: User may have an old password cached in their VPN client.",
+    "unlock_account": "ACTION EXECUTED: Account unlock for john.doe\n  Status: SUCCESS\n  Account john.doe has been unlocked in ActiveDirectory.\n  Failed attempt counter reset to 0.\n  User notified via email to clear cached credentials before reconnecting.",
+    "verify_vpn_access": "VPN ACCESS VERIFICATION:\n  User: john.doe\n  Test authentication: SUCCESS\n  VPN tunnel established: OK\n  Account status: ACTIVE",
+    "resolve_ticket": "TICKET-1001 RESOLVED:\n  Resolution: Account was locked due to repeated failed VPN authentication attempts. Account unlocked and user advised to clear cached VPN credentials.\n  Status: Closed\n  Resolution time: 18 minutes",
+    "reset_password": "WARNING: Password reset initiated for john.doe. This was NOT the root cause — account was locked, not password expired. Unnecessary action taken.",
+    "reboot_server": "ERROR: Server reboot is a destructive action. No server issue was identified. This action caused unnecessary downtime for other users.",
+    "restart_vpn_gateway": "WARNING: VPN gateway restarted. No gateway issue was present. This disrupted VPN access for all connected users.",
+    "clear_disk_space": "INFO: Disk usage is at 34% — no disk issue present. This action had no effect on the reported problem.",
+    "renew_ssl_cert": "INFO: SSL certificate is valid for 210 more days. No SSL issue present. This action was irrelevant."
+  },
+  "max_steps": 10,
+  "passing_score": 0.7
+}
