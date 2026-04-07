@@ -1,4 +1,5 @@
 ---
+
 title: IT Helpdesk
 emoji: 🐳
 colorFrom: blue
@@ -759,3 +760,15 @@ This means no required actions were completed. Ensure you call at minimum:
 ## License
 
 MIT License — free to use for hackathon submissions and research.
+=======
+title: It Helpdesk
+emoji: 🦀
+colorFrom: pink
+colorTo: pink
+sdk: docker
+pinned: false
+license: mit
+---
+
+Check out the configuration reference at https://huggingface.co/docs/hub/spaces-config-reference
+>>>>>>> 826e11a809a70d662e15102a5c2aba8a3c7b57b0
