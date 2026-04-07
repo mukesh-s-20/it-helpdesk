@@ -75,21 +75,31 @@ def get_tasks():
 
 
 @app.post("/reset", response_model=ResetResponse, tags=["Environment"])
-def reset(request: ResetRequest):
+def reset(request: ResetRequest | None = None):
     """
     Reset the environment and start a new task.
-
-    - **task_id**: one of `easy_vpn_lock`, `medium_disk_full`, `hard_ssl_expiry`
     """
+    task_aliases = {
+        "task_1": "easy_vpn_lock",
+        "task_2": "medium_disk_full",
+        "task_3": "hard_ssl_expiry",
+    }
+
+    if request is None:
+        task_id = "easy_vpn_lock"
+    else:
+        task_id = task_aliases.get(request.task_id, request.task_id)
+
     valid_ids = {"easy_vpn_lock", "medium_disk_full", "hard_ssl_expiry"}
-    if request.task_id not in valid_ids:
+
+    if task_id not in valid_ids:
         raise HTTPException(
             status_code=400,
-            detail=f"Invalid task_id '{request.task_id}'. Valid options: {sorted(valid_ids)}",
+            detail=f"Invalid task_id '{task_id}'. Valid options: {sorted(valid_ids)}",
         )
-    obs = env.reset(request.task_id)
-    return ResetResponse(**obs)
 
+    obs = env.reset(task_id)
+    return ResetResponse(**obs)
 
 @app.post("/step", response_model=StepResponse, tags=["Environment"])
 def step(request: StepRequest):
