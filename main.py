@@ -3,7 +3,7 @@ IT Helpdesk / DevOps Incident Triage — OpenEnv Backend
 FastAPI application exposing the environment API.
 """
 
-from fastapi.responses import RedirectResponse
+
 from __future__ import annotations
 
 import os
@@ -18,6 +18,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from fastapi.responses import RedirectResponse
 
 from sim_env.incident_env import IncidentEnv
 from sim_env.tasks import load_task, list_tasks
@@ -64,8 +65,6 @@ env = IncidentEnv()
 
 @app.get("/", tags=["Meta"])
 def health():
-    """Health check and environment info."""
-    tasks = list_tasks()
     return RedirectResponse(url="/ui")
 
 
