@@ -1,3 +1,12 @@
+---
+title: IT Helpdesk
+emoji: 🐳
+colorFrom: blue
+colorTo: green
+sdk: docker
+app_port: 7860
+---
+
 # IT Helpdesk Incident Triage — OpenEnv
 
 > An OpenEnv-style environment where an AI agent acts as an IT Helpdesk / DevOps Incident Triage assistant that diagnoses and resolves employee or system issues using logs, tickets, commands, and policy constraints.
