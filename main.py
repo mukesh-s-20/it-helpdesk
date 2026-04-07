@@ -18,8 +18,8 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from app_env.incident_env import IncidentEnv
-from app_env.tasks import load_task, list_tasks
+from sim_env.incident_env import IncidentEnv
+from sim_env.tasks import load_task, list_tasks
 from graders import run_grader
 from models import (
     GraderResult,
