@@ -112,30 +112,53 @@ class IncidentEnv:
     def state(self) -> dict:
         """Return full current environment state."""
         if self._task is None:
-            return {"status": "uninitialized", "message": "Call /reset to start a task."}
+            return {
+            "task_id": None,
+            "difficulty": None,
+            "title": None,
+            "ticket": None,
+            "system_facts": None,
+            "logs": None,
+            "available_actions": None,
+            "action_history": None,
+            "actions_taken": None,
+            "cumulative_reward": None,
+            "steps": None,
+            "max_steps": None,
+            "done": None,
+            "success": None,
+            "required_actions_total": None,
+            "required_actions_completed": None,
+            "progress_pct": None,
+            "status": "uninitialized",
+            "message": "Call /reset to start a task.",
+        }
+
 
         required = set(self._task.get("required_for_success", []))
         completed_required = required & self._actions_taken
 
         return {
-            "task_id": self._task["task_id"],
-            "difficulty": self._task["difficulty"],
-            "title": self._task["title"],
-            "ticket": self._task["ticket"],
-            "system_facts": self._redact_system_facts(self._task["system_facts"]),
-            "logs": self._task["logs"],
-            "available_actions": self._task["valid_actions"] + self._task["invalid_actions"],
-            "action_history": self._action_history,
-            "actions_taken": list(self._actions_taken),
-            "cumulative_reward": self._cumulative_reward,
-            "steps": self._steps,
-            "max_steps": self._task["max_steps"],
-            "done": self._done,
-            "success": self._success,
-            "required_actions_total": len(required),
-            "required_actions_completed": len(completed_required),
-            "progress_pct": round(len(completed_required) / max(len(required), 1) * 100, 1),
-        }
+        "task_id": self._task["task_id"],
+        "difficulty": self._task["difficulty"],
+        "title": self._task["title"],
+        "ticket": self._task["ticket"],
+        "system_facts": self._redact_system_facts(self._task["system_facts"]),
+        "logs": self._task["logs"],
+        "available_actions": self._task["valid_actions"] + self._task["invalid_actions"],
+        "action_history": self._action_history,
+        "actions_taken": list(self._actions_taken),
+        "cumulative_reward": self._cumulative_reward,
+        "steps": self._steps,
+        "max_steps": self._task["max_steps"],
+        "done": self._done,
+        "success": self._success,
+        "required_actions_total": len(required),
+        "required_actions_completed": len(completed_required),
+        "progress_pct": round(len(completed_required) / max(len(required), 1) * 100, 1),
+        "status": "active",
+        "message": "Environment running",
+    }
 
     # ------------------------------------------------------------------
     # Internal helpers
