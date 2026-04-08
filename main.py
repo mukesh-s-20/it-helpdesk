@@ -3,7 +3,7 @@ IT Helpdesk / DevOps Incident Triage — OpenEnv Backend
 FastAPI application exposing the environment API.
 """
 
-
+from agent import choose_action
 from __future__ import annotations
 
 import os
@@ -134,6 +134,68 @@ def grade():
     task_def = env._task
     result = run_grader(task_def["task_id"], current_state, task_def)
     return result
+
+@app.post("/solve", tags=["Agent"])
+def solve(request: ResetRequest | None = None):
+    """
+    Use the LLM agent to solve a task automatically.
+    This endpoint is required so the evaluator can verify LLM proxy usage.
+    """
+    task_aliases = {
+        "task_1": "easy_vpn_lock",
+        "task_2": "medium_disk_full",
+        "task_3": "hard_ssl_expiry",
+    }
+
+    if request is None:
+        task_id = "easy_vpn_lock"
+    else:
+        task_id = task_aliases.get(request.task_id, request.task_id)
+
+    valid_ids = {"easy_vpn_lock", "medium_disk_full", "hard_ssl_expiry"}
+
+    if task_id not in valid_ids:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid task_id '{task_id}'. Valid options: {sorted(valid_ids)}",
+        )
+
+    obs = env.reset(task_id)
+
+    trajectory = []
+
+    while not env._done and env._steps < env._task["max_steps"]:
+        try:
+            action = choose_action(obs)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"LLM agent failed: {str(e)}")
+
+        step_result = env.step(action)
+        trajectory.append({
+            "step": env._steps,
+            "action": action,
+            "reward": step_result["reward"],
+            "done": step_result["done"],
+            "success": step_result["success"],
+        })
+
+        obs = {
+            **env.state(),
+            "observation": step_result["observation"]
+        }
+
+    grade_result = run_grader(env._task["task_id"], env.state(), env._task)
+
+    return {
+        "task_id": env._task["task_id"],
+        "success": env._success,
+        "done": env._done,
+        "steps": env._steps,
+        "cumulative_reward": env._cumulative_reward,
+        "trajectory": trajectory,
+        "final_state": env.state(),
+        "grade": grade_result,
+    }
 
 
 @app.get("/ui", response_class=HTMLResponse, tags=["UI"])
