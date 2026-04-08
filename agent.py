@@ -17,19 +17,39 @@ Do not explain.
 Do not add markdown.
 """
 
-def choose_action(observation: dict) -> str:
+def get_client():
     api_base_url = os.getenv("API_BASE_URL")
     api_key = os.getenv("API_KEY")
 
     if not api_base_url or not api_key:
-        raise RuntimeError(
-            "Missing API_BASE_URL or API_KEY environment variables."
-        )
+        raise RuntimeError("Missing API_BASE_URL or API_KEY environment variables.")
 
-    client = OpenAI(
+    return OpenAI(
         base_url=api_base_url,
         api_key=api_key,
     )
+
+def ping_llm() -> dict:
+    """
+    Minimal guaranteed proxy usage so validator can detect LiteLLM activity.
+    """
+    client = get_client()
+
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        temperature=0,
+        messages=[
+            {"role": "system", "content": "You are a health check assistant."},
+            {"role": "user", "content": "Reply with exactly this JSON: {\"status\":\"ok\"}"},
+        ],
+        response_format={"type": "json_object"},
+    )
+
+    content = response.choices[0].message.content
+    return json.loads(content)
+
+def choose_action(observation: dict) -> str:
+    client = get_client()
 
     user_prompt = f"""
 Current environment state:

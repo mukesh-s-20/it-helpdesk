@@ -33,7 +33,7 @@ from models import (
     StepResponse,
     TasksResponse,
 )
-from agent import choose_action
+from agent import choose_action, ping_llm
 # ---------------------------------------------------------------------------
 # App setup
 # ---------------------------------------------------------------------------
@@ -66,11 +66,20 @@ env = IncidentEnv()
 
 @app.get("/", tags=["Meta"])
 def health():
+    llm_status = "not_called"
+
+    try:
+        ping_result = ping_llm()
+        llm_status = ping_result.get("status", "ok")
+    except Exception as e:
+        llm_status = f"error: {str(e)}"
+
     return {
         "status": "ok",
         "environment": "IT Helpdesk Incident Triage OpenEnv",
         "version": "1.0.0",
         "tasks_available": 3,
+        "llm_proxy_check": llm_status,
         "endpoints": [
             "GET  /          — health & info",
             "GET  /tasks     — list available tasks",
