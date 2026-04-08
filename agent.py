@@ -2,18 +2,13 @@ import os
 import json
 from openai import OpenAI
 
-client = OpenAI(
-    base_url=os.environ["API_BASE_URL"],
-    api_key=os.environ["API_KEY"],
-)
-
 SYSTEM_PROMPT = """
 You are an IT Helpdesk / DevOps Incident Triage agent.
 
 Your job is to solve incident tasks by selecting the BEST next action.
 
 Rules:
-- You must choose ONLY ONE action from the available_actions list.
+- Choose ONLY ONE action from the available_actions list.
 - Return ONLY valid JSON.
 - Format:
 {"action": "action_name"}
@@ -23,6 +18,19 @@ Do not add markdown.
 """
 
 def choose_action(observation: dict) -> str:
+    api_base_url = os.getenv("API_BASE_URL")
+    api_key = os.getenv("API_KEY")
+
+    if not api_base_url or not api_key:
+        raise RuntimeError(
+            "Missing API_BASE_URL or API_KEY environment variables."
+        )
+
+    client = OpenAI(
+        base_url=api_base_url,
+        api_key=api_key,
+    )
+
     user_prompt = f"""
 Current environment state:
 
@@ -37,6 +45,7 @@ Observation:
 {observation.get("observation", "")}
 
 Choose the single best next action.
+
 Return only JSON:
 {{"action": "action_name"}}
 """
