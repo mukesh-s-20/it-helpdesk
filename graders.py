@@ -1,13 +1,32 @@
 """
 Graders for the IT Helpdesk OpenEnv tasks.
 
-Each grader takes the environment state and returns a score in [0.0, 1.0]
+Each grader takes the environment state and returns a score strictly within (0, 1)
 with deterministic, explainable partial credit logic.
 """
 
 from __future__ import annotations
 
 from models import GraderResult
+
+
+def _safe_score(x: float) -> float:
+    """
+    Ensure score is STRICTLY between 0 and 1.
+    Never allow exactly 0.0 or exactly 1.0.
+    """
+    x = max(0.0001, min(x, 0.9999))
+
+    # Round only after clamping
+    x = round(x, 4)
+
+    # Recheck after rounding because round() can create 0.0 or 1.0
+    if x <= 0.0:
+        x = 0.0001
+    if x >= 1.0:
+        x = 0.9999
+
+    return x
 
 
 def _base_grade(state: dict, task_def: dict) -> tuple[float, str]:
@@ -19,7 +38,9 @@ def _base_grade(state: dict, task_def: dict) -> tuple[float, str]:
       - Reward signal (0–0.3):             normalized cumulative reward
       - Efficiency bonus (0–0.1):          reward fewer steps used vs max
       - Completion bonus (0.1):            flat bonus if task fully resolved
-    Returns (score 0.0–1.0, feedback string).
+
+    Returns:
+      (score strictly in (0,1), feedback string)
     """
     required = set(task_def.get("required_for_success", []))
     actions_taken = set(state.get("actions_taken", []))
@@ -34,11 +55,15 @@ def _base_grade(state: dict, task_def: dict) -> tuple[float, str]:
     coverage_score = round(coverage * 0.50, 4)
 
     # --- Component 2: Reward signal normalized (0.0 – 0.30) ---
-    # Theoretical max reward = sum of all positive rewards in reward_map
     reward_map = task_def.get("reward_map", {})
     max_possible_reward = sum(v for v in reward_map.values() if v > 0)
-    reward_score = min(max(cumulative_reward / max(max_possible_reward, 0.01), 0.0), 1.0)
-    reward_score = round(reward_score * 0.30, 4)
+
+    reward_ratio = 0.0
+    if max_possible_reward > 0:
+        reward_ratio = cumulative_reward / max_possible_reward
+
+    reward_ratio = max(0.0, min(reward_ratio, 1.0))
+    reward_score = round(reward_ratio * 0.30, 4)
 
     # --- Component 3: Efficiency bonus (0.0 – 0.10) ---
     if steps > 0 and success:
@@ -50,7 +75,13 @@ def _base_grade(state: dict, task_def: dict) -> tuple[float, str]:
     # --- Component 4: Completion bonus (0.10) ---
     completion_score = 0.10 if success else 0.0
 
-    total = round(min(coverage_score + reward_score + efficiency_score + completion_score, 1.0), 4)
+    raw_total = coverage_score + reward_score + efficiency_score + completion_score
+
+    # Hard cap to [0,1] first
+    raw_total = max(0.0001, min(raw_total, 0.9999))
+
+    # Then force STRICTLY inside (0,1)
+    total = _safe_score(raw_total)
 
     # Build feedback
     feedback_parts = []
@@ -59,7 +90,8 @@ def _base_grade(state: dict, task_def: dict) -> tuple[float, str]:
     feedback_parts.append(f"Reward score: {reward_score:.3f}/0.300 (cumulative reward: {cumulative_reward:.3f})")
     feedback_parts.append(f"Efficiency score: {efficiency_score:.3f}/0.100 ({steps}/{max_steps} steps used)")
     feedback_parts.append(f"Completion bonus: {completion_score:.3f}/0.100")
-    feedback_parts.append(f"Total score: {total:.4f}")
+    feedback_parts.append(f"Final clamped score: {total:.4f}")
+
     if success:
         feedback_parts.append("STATUS: PASSED — incident resolved successfully.")
     else:
@@ -73,18 +105,6 @@ def _base_grade(state: dict, task_def: dict) -> tuple[float, str]:
 
 
 def grade_easy(state: dict, task_def: dict) -> GraderResult:
-    """
-    Grader for Easy — Locked VPN Account.
-
-    Partial credit for:
-    - Inspecting account (+coverage)
-    - Correctly identifying lockout (+coverage)
-    - Unlocking account (+coverage, big reward)
-    - Resolving ticket (+coverage, completion)
-    Penalties for:
-    - Unnecessary destructive actions (reboot, restart vpn)
-    - Wrong diagnosis path
-    """
     score, feedback = _base_grade(state, task_def)
     passing_score = task_def.get("passing_score", 0.7)
 
@@ -107,19 +127,6 @@ def grade_easy(state: dict, task_def: dict) -> GraderResult:
 
 
 def grade_medium(state: dict, task_def: dict) -> GraderResult:
-    """
-    Grader for Medium — Disk Full Service Outage.
-
-    Partial credit for:
-    - Checking logs and service status (+coverage)
-    - Inspecting disk usage — identifies root cause (+coverage)
-    - Clearing temp files — resolves root cause (+coverage, big reward)
-    - Restarting portal service (+coverage)
-    - Resolving ticket (+coverage, completion)
-    Penalties for:
-    - Full server reboot (-0.25 — dangerous and unnecessary)
-    - Wrong subsystem investigation
-    """
     score, feedback = _base_grade(state, task_def)
     passing_score = task_def.get("passing_score", 0.7)
 
@@ -142,22 +149,6 @@ def grade_medium(state: dict, task_def: dict) -> GraderResult:
 
 
 def grade_hard(state: dict, task_def: dict) -> GraderResult:
-    """
-    Grader for Hard — Expired SSL Certificate on Billing Service.
-
-    Partial credit for:
-    - Checking logs (+coverage)
-    - Inspecting SSL certificate — identifies expiry (+coverage)
-    - Checking gateway status — identifies cascade (+coverage)
-    - Renewing SSL certificate — core fix (+coverage, large reward)
-    - Deploying new certificate (+coverage)
-    - Restarting gateway — activates fix (+coverage)
-    - Verifying billing access — confirms fix (+coverage)
-    - Resolving ticket with RCA (+coverage, completion)
-    Penalties for:
-    - Server reboot (-0.25)
-    - Irrelevant subsystem actions
-    """
     score, feedback = _base_grade(state, task_def)
     passing_score = task_def.get("passing_score", 0.75)
 
