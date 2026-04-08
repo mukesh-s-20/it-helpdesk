@@ -3,7 +3,7 @@ inference.py — IT Helpdesk Incident Triage OpenEnv
 Baseline inference script for evaluation.
 
 Supports:
-  - OpenAI-compatible LLM via API_BASE_URL + MODEL_NAME + HF_TOKEN
+  - OpenAI-compatible LLM via API_BASE_URL + MODEL_NAME + API_KEY / HF_TOKEN
   - Deterministic heuristic fallback if LLM is unavailable
 
 Structured stdout logging:
@@ -13,7 +13,7 @@ Structured stdout logging:
 
 Usage:
   python inference.py
-  API_BASE_URL=https://api-inference.huggingface.co/v1 MODEL_NAME=... HF_TOKEN=... python inference.py
+  API_BASE_URL=https://llm-proxy/v1 MODEL_NAME=... API_KEY=... python inference.py
 """
 
 from __future__ import annotations
@@ -29,15 +29,23 @@ import requests
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
+# The evaluator injects:
+#   API_BASE_URL  — the LiteLLM proxy endpoint for LLM calls
+#   MODEL_NAME    — the model to use
+#   API_KEY       — the API key for the LLM proxy
+#   HF_TOKEN      — alternative API key (Hugging Face)
+#
+# ENV_SERVER_URL is the OpenEnv FastAPI backend (running locally in Docker).
+# ---------------------------------------------------------------------------
 
-API_BASE_URL: str = os.getenv("API_BASE_URL", "http://localhost:7860")
-MODEL_NAME: str = os.getenv("MODEL_NAME", "")
-HF_TOKEN: str = os.getenv("HF_TOKEN", "")
+# LLM proxy config — injected by evaluator
+API_BASE_URL: str = os.getenv("API_BASE_URL", "")
+MODEL_NAME:   str = os.getenv("MODEL_NAME", "")
+API_KEY:      str = os.getenv("API_KEY", "") or os.getenv("HF_TOKEN", "")
 
-LLM_BASE_URL: str = os.getenv("LLM_API_BASE", "")  # OpenAI-compatible endpoint
-LLM_API_KEY: str = HF_TOKEN or os.getenv("OPENAI_API_KEY", "dummy")
-
-ENV_BASE = API_BASE_URL.rstrip("/")
+# OpenEnv environment server (local FastAPI, always on 7860 inside Docker)
+ENV_SERVER_URL: str = os.getenv("ENV_SERVER_URL", "http://localhost:7860")
+ENV_BASE: str = ENV_SERVER_URL.rstrip("/")
 
 TASK_IDS = ["easy_vpn_lock", "medium_disk_full", "hard_ssl_expiry"]
 
@@ -111,18 +119,21 @@ def env_grade() -> dict:
 
 
 # ---------------------------------------------------------------------------
-# LLM helpers
+# LLM helpers — uses API_BASE_URL + API_KEY as required by evaluator
 # ---------------------------------------------------------------------------
 
 def build_llm_client():
-    """Build OpenAI client if LLM config is available."""
-    if not LLM_BASE_URL and not MODEL_NAME:
+    """
+    Build OpenAI client using evaluator-injected API_BASE_URL and API_KEY.
+    Returns None (triggers heuristic fallback) if config is missing.
+    """
+    if not API_BASE_URL or not MODEL_NAME:
         return None
     try:
         from openai import OpenAI
         client = OpenAI(
-            base_url=LLM_BASE_URL or "https://api.openai.com/v1",
-            api_key=LLM_API_KEY,
+            base_url=API_BASE_URL,
+            api_key=API_KEY if API_KEY else "dummy",
         )
         return client
     except ImportError:
@@ -180,7 +191,7 @@ Respond with ONLY the action string, no explanation, no punctuation."""
             if raw in a or a in raw:
                 return a
         return None
-    except Exception as e:
+    except Exception:
         return None
 
 
@@ -284,10 +295,10 @@ def run_task(task_id: str, client, model: str) -> dict:
 
 def main():
     print("[START] IT Helpdesk Incident Triage — OpenEnv Inference")
-    print(f"[START] env_url={ENV_BASE} model={MODEL_NAME or '(heuristic fallback)'}")
+    print(f"[START] env_url={ENV_BASE} llm_api_base={API_BASE_URL or '(none)'} model={MODEL_NAME or '(heuristic fallback)'}")
     sys.stdout.flush()
 
-    # Build LLM client (may be None — fallback is always safe)
+    # Build LLM client using evaluator-injected API_BASE_URL + API_KEY
     client = build_llm_client()
     model = MODEL_NAME
 
