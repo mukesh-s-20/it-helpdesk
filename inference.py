@@ -39,9 +39,9 @@ import requests
 # ---------------------------------------------------------------------------
 
 # LLM proxy config — injected by evaluator
-API_BASE_URL: str = os.getenv("API_BASE_URL", "")
-MODEL_NAME:   str = os.getenv("MODEL_NAME", "")
-API_KEY:      str = os.getenv("API_KEY", "") or os.getenv("HF_TOKEN", "")
+API_BASE_URL = os.getenv("API_BASE_URL", "")
+MODEL_NAME = os.getenv("MODEL_NAME", "gpt-4o-mini")
+API_KEY = os.getenv("API_KEY", "")
 
 # OpenEnv environment server (local FastAPI, always on 7860 inside Docker)
 ENV_SERVER_URL: str = os.getenv("ENV_SERVER_URL", "http://localhost:7860")
@@ -123,22 +123,19 @@ def env_grade() -> dict:
 # ---------------------------------------------------------------------------
 
 def build_llm_client():
-    """
-    Build OpenAI client using evaluator-injected API_BASE_URL and API_KEY.
-    Returns None (triggers heuristic fallback) if config is missing.
-    """
-    if not API_BASE_URL or not MODEL_NAME:
+    if not API_BASE_URL or not API_KEY:
         return None
+
     try:
         from openai import OpenAI
+
         client = OpenAI(
-            base_url=API_BASE_URL,
-            api_key=API_KEY if API_KEY else "dummy",
+            base_url=os.environ["API_BASE_URL"],
+            api_key=os.environ["API_KEY"],
         )
         return client
-    except ImportError:
-        return None
-    except Exception:
+    except Exception as e:
+        print(f"[WARN] Failed to initialize LLM client: {e}")
         return None
 
 

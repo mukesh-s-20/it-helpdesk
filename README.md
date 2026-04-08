@@ -376,7 +376,7 @@ The grader can be called at any time via `GET /grade` — mid-episode grading sh
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/YOUR_USERNAME/it-helpdesk-openenv.git
+git clone https://github.com/mukesh-s-20/it-helpdesk.git
 cd it-helpdesk-openenv
 
 # 2. Create and activate virtual environment
