@@ -6,4 +6,3 @@ python-multipart==0.0.19
 openai==1.57.4
 requests==2.32.3
 pyyaml==6.0.2
-openai>=1.0.0
