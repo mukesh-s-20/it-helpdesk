@@ -15,16 +15,21 @@ def _safe_score(x: float) -> float:
     Ensure score is STRICTLY between 0 and 1.
     Never allow exactly 0.0 or exactly 1.0.
     """
-    x = max(0.0001, min(x, 0.9999))
+    x = float(x)
 
-    # Round only after clamping
+    if x <= 0.0:
+        return 0.0001
+
+    if x >= 1.0:
+        return 0.9999
+
     x = round(x, 4)
 
-    # Recheck after rounding because round() can create 0.0 or 1.0
     if x <= 0.0:
-        x = 0.0001
+        return 0.0001
+
     if x >= 1.0:
-        x = 0.9999
+        return 0.9999
 
     return x
 
@@ -32,16 +37,8 @@ def _safe_score(x: float) -> float:
 def _base_grade(state: dict, task_def: dict) -> tuple[float, str]:
     """
     Shared grading logic with partial progress signals.
-
-    Scoring components:
-      - Required action coverage (0–0.5):  proportion of required actions completed
-      - Reward signal (0–0.3):             normalized cumulative reward
-      - Efficiency bonus (0–0.1):          reward fewer steps used vs max
-      - Completion bonus (0.1):            flat bonus if task fully resolved
-
-    Returns:
-      (score strictly in (0,1), feedback string)
     """
+
     required = set(task_def.get("required_for_success", []))
     actions_taken = set(state.get("actions_taken", []))
     cumulative_reward = state.get("cumulative_reward", 0.0)
@@ -49,12 +46,12 @@ def _base_grade(state: dict, task_def: dict) -> tuple[float, str]:
     max_steps = task_def.get("max_steps", 10)
     success = state.get("success", False)
 
-    # --- Component 1: Required action coverage (0.0 – 0.50) ---
+    # Required action coverage (0.0 – 0.50)
     completed_required = required & actions_taken
     coverage = len(completed_required) / max(len(required), 1)
     coverage_score = round(coverage * 0.50, 4)
 
-    # --- Component 2: Reward signal normalized (0.0 – 0.30) ---
+    # Reward signal normalized (0.0 – 0.30)
     reward_map = task_def.get("reward_map", {})
     max_possible_reward = sum(v for v in reward_map.values() if v > 0)
 
@@ -65,30 +62,35 @@ def _base_grade(state: dict, task_def: dict) -> tuple[float, str]:
     reward_ratio = max(0.0, min(reward_ratio, 1.0))
     reward_score = round(reward_ratio * 0.30, 4)
 
-    # --- Component 3: Efficiency bonus (0.0 – 0.10) ---
+    # Efficiency bonus (0.0 – 0.10)
     if steps > 0 and success:
         efficiency = max(0.0, 1.0 - (steps / max(max_steps, 1)))
         efficiency_score = round(efficiency * 0.10, 4)
     else:
         efficiency_score = 0.0
 
-    # --- Component 4: Completion bonus (0.10) ---
+    # Completion bonus (0.10)
     completion_score = 0.10 if success else 0.0
 
     raw_total = coverage_score + reward_score + efficiency_score + completion_score
 
-    # Hard cap to [0,1] first
+    # Force raw_total inside valid range before rounding
     raw_total = max(0.0001, min(raw_total, 0.9999))
 
-    # Then force STRICTLY inside (0,1)
+    # Final safe score
     total = _safe_score(raw_total)
 
-    # Build feedback
     feedback_parts = []
-    feedback_parts.append(f"Required actions completed: {len(completed_required)}/{len(required)} ({round(coverage*100)}%)")
+    feedback_parts.append(
+        f"Required actions completed: {len(completed_required)}/{len(required)} ({round(coverage * 100)}%)"
+    )
     feedback_parts.append(f"Coverage score: {coverage_score:.3f}/0.500")
-    feedback_parts.append(f"Reward score: {reward_score:.3f}/0.300 (cumulative reward: {cumulative_reward:.3f})")
-    feedback_parts.append(f"Efficiency score: {efficiency_score:.3f}/0.100 ({steps}/{max_steps} steps used)")
+    feedback_parts.append(
+        f"Reward score: {reward_score:.3f}/0.300 (cumulative reward: {cumulative_reward:.3f})"
+    )
+    feedback_parts.append(
+        f"Efficiency score: {efficiency_score:.3f}/0.100 ({steps}/{max_steps} steps used)"
+    )
     feedback_parts.append(f"Completion bonus: {completion_score:.3f}/0.100")
     feedback_parts.append(f"Final clamped score: {total:.4f}")
 
@@ -97,15 +99,22 @@ def _base_grade(state: dict, task_def: dict) -> tuple[float, str]:
     else:
         missing = required - actions_taken
         if missing:
-            feedback_parts.append(f"STATUS: FAILED — missing required actions: {', '.join(sorted(missing))}")
+            feedback_parts.append(
+                f"STATUS: FAILED — missing required actions: {', '.join(sorted(missing))}"
+            )
         else:
-            feedback_parts.append("STATUS: FAILED — max steps exceeded or ticket not resolved.")
+            feedback_parts.append(
+                "STATUS: FAILED — max steps exceeded or ticket not resolved."
+            )
+
+    print(f"[GRADER DEBUG] raw_total={raw_total} total={total}")
 
     return total, "\n".join(feedback_parts)
 
 
 def grade_easy(state: dict, task_def: dict) -> GraderResult:
     score, feedback = _base_grade(state, task_def)
+    score = _safe_score(score)
     passing_score = task_def.get("passing_score", 0.7)
 
     return GraderResult(
@@ -118,7 +127,8 @@ def grade_easy(state: dict, task_def: dict) -> GraderResult:
         steps_taken=state.get("steps", 0),
         max_steps=task_def.get("max_steps", 10),
         required_actions_completed=len(
-            set(task_def.get("required_for_success", [])) & set(state.get("actions_taken", []))
+            set(task_def.get("required_for_success", []))
+            & set(state.get("actions_taken", []))
         ),
         required_actions_total=len(task_def.get("required_for_success", [])),
         actions_taken=state.get("actions_taken", []),
@@ -128,6 +138,7 @@ def grade_easy(state: dict, task_def: dict) -> GraderResult:
 
 def grade_medium(state: dict, task_def: dict) -> GraderResult:
     score, feedback = _base_grade(state, task_def)
+    score = _safe_score(score)
     passing_score = task_def.get("passing_score", 0.7)
 
     return GraderResult(
@@ -140,7 +151,8 @@ def grade_medium(state: dict, task_def: dict) -> GraderResult:
         steps_taken=state.get("steps", 0),
         max_steps=task_def.get("max_steps", 15),
         required_actions_completed=len(
-            set(task_def.get("required_for_success", [])) & set(state.get("actions_taken", []))
+            set(task_def.get("required_for_success", []))
+            & set(state.get("actions_taken", []))
         ),
         required_actions_total=len(task_def.get("required_for_success", [])),
         actions_taken=state.get("actions_taken", []),
@@ -150,6 +162,7 @@ def grade_medium(state: dict, task_def: dict) -> GraderResult:
 
 def grade_hard(state: dict, task_def: dict) -> GraderResult:
     score, feedback = _base_grade(state, task_def)
+    score = _safe_score(score)
     passing_score = task_def.get("passing_score", 0.75)
 
     return GraderResult(
@@ -162,7 +175,8 @@ def grade_hard(state: dict, task_def: dict) -> GraderResult:
         steps_taken=state.get("steps", 0),
         max_steps=task_def.get("max_steps", 20),
         required_actions_completed=len(
-            set(task_def.get("required_for_success", [])) & set(state.get("actions_taken", []))
+            set(task_def.get("required_for_success", []))
+            & set(state.get("actions_taken", []))
         ),
         required_actions_total=len(task_def.get("required_for_success", [])),
         actions_taken=state.get("actions_taken", []),
