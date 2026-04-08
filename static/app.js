@@ -511,12 +511,15 @@ function setBadge(type) {
     if (e.key === 'Escape') hideLoading();
   });
 
-  // Check server health on load
-  fetch('/').then(r => r.json()).then(data => {
-    if (data.status === 'ok') {
-      toast(`IncidentEnv ready · ${data.tasks_available} tasks available`, 'success', 3000);
+ // Check server health on load
+fetch('/tasks')
+  .then(r => r.json())
+  .then(data => {
+    if (data.tasks) {
+      toast(`IncidentEnv ready · ${data.tasks.length} tasks available`, 'success', 3000);
     }
-  }).catch(() => {
+  })
+  .catch(() => {
     toast('Could not connect to environment server', 'error');
   });
 })();
