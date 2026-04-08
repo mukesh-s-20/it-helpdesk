@@ -512,7 +512,7 @@ function setBadge(type) {
   });
 
  // Check server health on load
-fetch('/tasks')
+fetch('tasks')
   .then(r => r.json())
   .then(data => {
     if (data.tasks) {
