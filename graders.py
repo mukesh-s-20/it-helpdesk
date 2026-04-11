@@ -80,7 +80,7 @@ def _base_grade(state: dict, task_def: dict) -> tuple[float, str]:
 def _wrap(task_def, state, score, feedback, passing):
     score = _safe_score(score)
 
-    # Clamp other numeric fields to avoid 0.0 or 1.0
+    
     cumulative_reward = _safe_score(state.get("cumulative_reward", 0.0))
     steps_taken = max(1, state.get("steps", 0))  # avoid 0
     max_steps = max(steps_taken + 1, task_def.get("max_steps", 10))
