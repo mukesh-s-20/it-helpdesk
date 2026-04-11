@@ -120,7 +120,7 @@ class TasksResponse(BaseModel):
 class GraderResult(BaseModel):
     task_id: str
     difficulty: str
-    score: float = Field(ge=0.0, le=1.0)
+    score: float = Field(gt=0.0, lt=1.0)
     passed: bool
     passing_score: float
     cumulative_reward: float
