@@ -12,25 +12,20 @@ from models import GraderResult
 
 def _safe_score(x: float) -> float:
     """
-    Ensure score is STRICTLY between 0 and 1.
+    Ensure score is STRICTLY between 0 and 1 (exclusive).
     Never allow exactly 0.0 or exactly 1.0.
+    Uses 4 decimal places — min=0.0001, max=0.9999.
     """
     x = float(x)
-
-    if x <= 0.0:
-        return 0.0001
-
-    if x >= 1.0:
-        return 0.9999
-
+    # Clamp to open interval (0, 1)
+    x = max(0.0001, min(x, 0.9999))
+    # Round to 4 decimal places
     x = round(x, 4)
-
+    # Final safety check after rounding (round(0.99995, 4) could give 1.0)
     if x <= 0.0:
         return 0.0001
-
     if x >= 1.0:
         return 0.9999
-
     return x
 
 
@@ -75,7 +70,7 @@ def _base_grade(state: dict, task_def: dict) -> tuple[float, str]:
     raw_total = coverage_score + reward_score + efficiency_score + completion_score
 
     # Force raw_total inside valid range before rounding
-    raw_total = max(0.0001, min(raw_total, 0.9999))
+    raw_total = max(0.0002, min(raw_total, 0.9998))  # extra margin before rounding
 
     # Final safe score
     total = _safe_score(raw_total)
