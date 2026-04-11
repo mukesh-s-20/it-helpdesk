@@ -28,7 +28,7 @@ def _safe_score(x: float) -> float:
 
 
 def _base_grade(state: dict, task_def: dict) -> tuple[float, str]:
-    # ⚠️ FIX: correct key name from openenv.yaml
+    
     required = set(task_def.get("required_actions", []))
 
     actions_taken = set(state.get("actions_taken", []))
