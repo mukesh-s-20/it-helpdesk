@@ -80,19 +80,28 @@ def _base_grade(state: dict, task_def: dict) -> tuple[float, str]:
 def _wrap(task_def, state, score, feedback, passing):
     score = _safe_score(score)
 
+    # Clamp other numeric fields to avoid 0.0 or 1.0
+    cumulative_reward = _safe_score(state.get("cumulative_reward", 0.0))
+    steps_taken = max(1, state.get("steps", 0))  # avoid 0
+    max_steps = max(steps_taken + 1, task_def.get("max_steps", 10))
+
     return GraderResult(
         task_id=task_def["task_id"],
         difficulty=task_def["difficulty"],
         score=score,
         passed=score >= passing,
         passing_score=passing,
-        cumulative_reward=state.get("cumulative_reward", 0.0) or 0.0,
-        steps_taken=state.get("steps", 0) or 0,
-        max_steps=task_def.get("max_steps", 10),
-        required_actions_completed=len(
-            set(task_def.get("required_actions", [])) & set(state.get("actions_taken", []))
+        cumulative_reward=cumulative_reward,
+        steps_taken=steps_taken,
+        max_steps=max_steps,
+        required_actions_completed=max(
+            1,
+            len(set(task_def.get("required_actions", [])) & set(state.get("actions_taken", [])))
         ),
-        required_actions_total=len(task_def.get("required_actions", [])),
+        required_actions_total=max(
+            2,
+            len(task_def.get("required_actions", []))
+        ),
         actions_taken=state.get("actions_taken", []),
         feedback=feedback,
     )
